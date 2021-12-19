@@ -13,7 +13,7 @@ import imghdr
 import math
 #import bitarray
 
-supportedPhotoFormats = ['jpg','tiff', 'jpeg']
+supportedPhotoFormats = ['jpg','jpeg']
 verbose = True
 
 def convertFromBits(numBits):
@@ -107,22 +107,37 @@ def writeMessageToPhoto(img,message):
 
     messageIterator = 0
     pictureIterator = 0
-    print(f"Message length if {len(message)} bits")
-
     img_data = list(img.getdata())
 
-    for i in message:
+    while True:
         
-        print(img_data[pictureIterator], pictureIterator)
-        print(message[messageIterator],message[messageIterator+1],message[messageIterator+2], messageIterator)
+        # Convert pixel data (tuple) to list, edit the pixel data
+        #   and convert again to tuple
+        pixel_lst = list(img_data[pictureIterator])
+            
+        for i in range(0,3):
+            if message[messageIterator + i]: 
+                pixel_lst[i] = pixel_lst[i] | 0x01
+            else:
+                pixel_lst[i] = pixel_lst[i] & 0xfe
 
+        img_data[pictureIterator] = tuple(pixel_lst)
+
+        # Control vars and end loop condition
         messageIterator += 3
         pictureIterator += 1
 
-if __name__ == "__main__":
+        if messageIterator >= len(message):
+            break
+
+    # Save changed data to 'img' var
+    img.putdata(img_data)
+
+    return img
+
+def encodeMessage():
 
     # Get full path to the target photo
-
     if len(sys.argv) == 2:
         fileFullPath = sys.argv[1]
         print(f"Loaded from cmd line parameters: {fileFullPath}")
@@ -142,7 +157,7 @@ if __name__ == "__main__":
 
     # Extract EXIF data from file
     img_no_exif = extractEXIFData(fileFullPath)
-
+    
     # Calculate available space for steganography into target photo
     maxMessageSize = calculateSteganographySpace(img_no_exif)
 
@@ -156,4 +171,10 @@ if __name__ == "__main__":
     img_no_exif = writeMessageToPhoto(img_no_exif,bitMessageArray)
 
     # Save final image
-    #img_no_exif.save(fileFullPath+".encoded")
+    os.rename(fileFullPath, fileFullPath + ".old")
+    img_no_exif.save(fileFullPath)
+
+
+if __name__ == "__main__":
+
+    encodeMessage()
